@@ -53,7 +53,7 @@ float invoke_gemm(int n_warmup,
     gemm_workspace.Realloc(get_workspace_size(args));
     static constexpr ck_tile::index_t NumATensor = 1;
     static constexpr ck_tile::index_t NumBTensor = 1;
-    static constexpr ck_tile::index_t NumDTensor = 2;
+    static constexpr ck_tile::index_t NumDTensor = 1;
     float ave_time = 0;
     if constexpr(!Persistent)
     {
