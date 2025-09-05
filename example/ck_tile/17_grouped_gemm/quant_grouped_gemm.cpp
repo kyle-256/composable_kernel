@@ -28,7 +28,8 @@ template <typename GemmConfig,
           typename BDataType,
           typename BQDataType,
           typename AccDataType,
-          typename CDataType>
+          typename CDataType,
+          ck_tile::QuantType QuantMode>
 float grouped_gemm_tileloop(const ck_tile::stream_config& s,
                             const ck_tile::index_t num_groups,
                             void* kargs_ptr)
@@ -44,7 +45,6 @@ float grouped_gemm_tileloop(const ck_tile::stream_config& s,
     using TilePartitioner = ck_tile::
         GemmSpatiallyLocalTilePartitioner<GemmShape, TileParitionerGroupNum, TileParitionerM01>;
 
-    constexpr ck_tile::QuantType QuantMode = ck_tile::QuantType::RowColQuant;
     using GemmUniversalTraits              = ck_tile::TileGemmQuantTraits<GemmConfig::kPadM,
                                                                           GemmConfig::kPadN,
                                                                           GemmConfig::kPadK,

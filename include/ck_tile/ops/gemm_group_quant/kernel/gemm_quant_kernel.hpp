@@ -577,9 +577,24 @@ struct QuantGemmKernel
                     number<1>{},
                     number<1>{});
             }
+            else if constexpr(kQuantType == QuantType::TensorQuant)
+            {
+                return make_naive_tensor_view<address_space_enum::global>(
+                    aq_ptr,
+                    make_tuple(kargs.M, kargs.N),
+                    make_tuple(0, 0), // broadcasting over m and n
+                    number<1>{},
+                    number<1>{});
+            }
             else
             {
-                return nullptr; // TODO: use some other "empty" type for this
+                return make_naive_tensor_view<address_space_enum::global>(
+                    aq_ptr,
+                    make_tuple(0, 0),
+                    make_tuple(0, 0),
+                    number<1>{},
+                    number<1>{});
+                // return nullptr; // TODO: use some other "empty" type for this
             }
         }();
 
@@ -656,6 +671,15 @@ struct QuantGemmKernel
                     number<1>{},
                     number<1>{});
             }
+            if constexpr(kQuantType == QuantType::TensorQuant)
+            {
+                return make_naive_tensor_view<address_space_enum::global>(
+                    bq_ptr,
+                    make_tuple(kargs.M, kargs.N),
+                    make_tuple(0, 0), // broadcasting over m and n
+                    number<1>{},
+                    number<1>{});
+            }
             else if constexpr(kQuantType == QuantType::BQuantGrouped)
             {
                 static_assert(std::is_same_v<BQLayout, tensor_layout::gemm::ColumnMajor>);
@@ -668,7 +692,13 @@ struct QuantGemmKernel
             }
             else
             {
-                return nullptr; // TODO: use some other "empty" type for this
+                return make_naive_tensor_view<address_space_enum::global>(
+                    bq_ptr,
+                    make_tuple(0, 0),
+                    make_tuple(0, 0),
+                    number<1>{},
+                    number<1>{});
+                // return nullptr; // TODO: use some other "empty" type for this
             }
         }();
 
@@ -829,9 +859,20 @@ struct QuantGemmKernel
                                                    number<TilePartitioner::NPerBlock>{}),
                                         {i_m, i_n});
             }
+            else if constexpr(kQuantType == QuantType::TensorQuant)
+            {
+                return make_tile_window(aq_pad_view,
+                                        make_tuple(number<TilePartitioner::MPerBlock>{},
+                                                   number<TilePartitioner::NPerBlock>{}),
+                                        {i_m, i_n});
+            }
             else
             {
-                return nullptr; // TODO: use some other "empty" type?
+                return make_tile_window(aq_pad_view,
+                                        make_tuple(number<TilePartitioner::MPerBlock>{},
+                                                   number<TilePartitioner::NPerBlock>{}),
+                                        {i_m, i_n});
+                // return nullptr; // TODO: use some other "empty" type?
             }
         }();
 
@@ -860,6 +901,13 @@ struct QuantGemmKernel
                                                    number<TilePartitioner::NPerBlock>{}),
                                         {i_m, i_n});
             }
+            if constexpr(kQuantType == QuantType::TensorQuant)
+            {
+                return make_tile_window(bq_pad_view,
+                                        make_tuple(number<TilePartitioner::MPerBlock>{},
+                                                   number<TilePartitioner::NPerBlock>{}),
+                                        {i_m, i_n});
+            }
             else if constexpr(kQuantType == QuantType::BQuantGrouped)
             {
                 static_assert(std::is_same_v<BQLayout, tensor_layout::gemm::ColumnMajor>);
@@ -871,7 +919,11 @@ struct QuantGemmKernel
             }
             else
             {
-                return nullptr; // TODO: use some other "empty" type here
+                return make_tile_window(bq_pad_view,
+                                        make_tuple(number<TilePartitioner::MPerBlock>{},
+                                                   number<TilePartitioner::NPerBlock>{}),
+                                        {i_m, i_n});
+                // return nullptr; // TODO: use some other "empty" type here
             }
         }();
 
@@ -938,7 +990,7 @@ struct QuantGemmKernel
                 return GemmPipeline{}.template operator()(
                     a_block_window, b_block_window, bq_block_window, num_loop, smem_ptr_0);
             }
-            else if constexpr(kQuantType == QuantType::RowColQuant)
+            else if constexpr((kQuantType == QuantType::RowColQuant) || (kQuantType == QuantType::TensorQuant))
             {
                 return GemmPipeline{}.template operator()(
                     a_block_window, b_block_window, num_loop, smem_ptr_0);
@@ -953,7 +1005,7 @@ struct QuantGemmKernel
         {
             EpiloguePipeline{}(c_block_window, c_block_tile, c_block_window, smem_ptr_0);
         }
-        else if constexpr(kQuantType == QuantType::RowColQuant)
+        else if constexpr((kQuantType == QuantType::RowColQuant) || (kQuantType == QuantType::TensorQuant))
         {
             const auto& aq_block_window = gemm_tile_windows.at(I1);
             const auto& bq_block_window = gemm_tile_windows.at(I3);
