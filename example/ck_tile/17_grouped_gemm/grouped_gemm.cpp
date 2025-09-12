@@ -340,11 +340,6 @@ int run_grouped_gemm_example(int argc, char* argv[])
         return run_gemm_example_prec_type<GemmConfig<ck_tile::half_t>, ck_tile::half_t>(
             a_layout, b_layout, argc, argv);
     }
-    else if(data_type == "fp8")
-    {
-        return run_gemm_example_prec_type<GemmConfig<ck_tile::fp8_t>, ck_tile::fp8_t>(
-            a_layout, b_layout, argc, argv);
-    }
     else
     {
         throw std::runtime_error("Unsupported data type configuration.");
@@ -353,5 +348,13 @@ int run_grouped_gemm_example(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
-    return !run_grouped_gemm_example<GemmConfigComputeV4>(argc, argv);
+    run_grouped_gemm_example<GemmConfigComputeV3_2>(argc, argv);
+    run_grouped_gemm_example<GemmConfigComputeV3_2_3>(argc, argv);
+    run_grouped_gemm_example<GemmConfigComputeV3_3>(argc, argv);
+
+    run_grouped_gemm_example<GemmConfigComputeV3_5>(argc, argv);
+
+    run_grouped_gemm_example<GemmConfigComputeV3_6>(argc, argv);
+    run_grouped_gemm_example<GemmConfigComputeV3_7>(argc, argv);
+    return 0;
 }
