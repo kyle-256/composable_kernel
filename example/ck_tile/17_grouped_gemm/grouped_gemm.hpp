@@ -28,10 +28,16 @@ constexpr ck_tile::index_t get_k_warp_tile()
     else
         return is_8bit_float ? 128 : 32;
 #else
+    constexpr bool is_8bit_float =
+        std::is_same_v<PrecType, ck_tile::fp8_t> || std::is_same_v<PrecType, ck_tile::bf8_t>;
     if constexpr(M_Warp_Tile == 32)
-        return 16;
+        return is_8bit_float ? 32 : 16;
     else
-        return 32;
+        return is_8bit_float ? 64 : 32;
+    // if constexpr(M_Warp_Tile == 32)
+    //     return 16;
+    // else
+    //     return 32;
 #endif
 }
 
@@ -91,7 +97,7 @@ struct GemmConfigBase
     static constexpr ck_tile::index_t Pipeline      = CK_TILE_PIPELINE_COMPUTE_V3;
     static constexpr ck_tile::index_t NumWaveGroups = 1;
     static constexpr bool Preshuffle                = false;
-    static constexpr bool Persistent                = false;
+    static constexpr bool Persistent                = true;
     static constexpr bool DoubleSmemBuffer          = false;
 };
 
@@ -125,6 +131,29 @@ struct GemmConfigComputeV4 : public GemmConfigBase
     static constexpr ck_tile::index_t N_Tile = 128;
     static constexpr ck_tile::index_t K_Tile = 128 / sizeof(PrecType);
 
+    static constexpr ck_tile::index_t M_Warp = 1;
+    static constexpr ck_tile::index_t N_Warp = 4;
+    static constexpr ck_tile::index_t K_Warp = 1;
+
+    static constexpr ck_tile::index_t M_Warp_Tile = 32;
+    static constexpr ck_tile::index_t N_Warp_Tile = 32;
+    static constexpr ck_tile::index_t K_Warp_Tile = get_k_warp_tile<PrecType, M_Warp_Tile>();
+
+    static constexpr bool DoubleSmemBuffer     = true;
+    static constexpr ck_tile::index_t Pipeline = CK_TILE_PIPELINE_COMPUTE_V4;
+
+    static constexpr int kBlockPerCu = 1;
+};
+
+template <typename PrecType>
+struct GemmConfigComputeV4_2 : public GemmConfigBase
+{
+    // Compute V4 only support Intrawave scheduler
+    // Using the ping pong reader in the lds level
+    static constexpr ck_tile::index_t M_Tile = 256;
+    static constexpr ck_tile::index_t N_Tile = 256;
+    static constexpr ck_tile::index_t K_Tile = 64 / sizeof(PrecType);
+
     static constexpr ck_tile::index_t M_Warp = 2;
     static constexpr ck_tile::index_t N_Warp = 2;
     static constexpr ck_tile::index_t K_Warp = 1;
@@ -135,9 +164,28 @@ struct GemmConfigComputeV4 : public GemmConfigBase
 
     static constexpr bool DoubleSmemBuffer     = true;
     static constexpr ck_tile::index_t Pipeline = CK_TILE_PIPELINE_COMPUTE_V4;
-
-    static constexpr int kBlockPerCu = 2;
 };
+
+
+// template <typename PrecType>
+// struct GemmConfigComputeV5 : public GemmConfigBase
+// {
+//     static constexpr ck_tile::index_t M_Tile = 128;
+//     static constexpr ck_tile::index_t N_Tile = 128;
+//     static constexpr ck_tile::index_t K_Tile = 64 / sizeof(PrecType);
+
+//     static constexpr ck_tile::index_t M_Warp = 1;
+//     static constexpr ck_tile::index_t N_Warp = 1;
+//     static constexpr ck_tile::index_t K_Warp = 2;
+
+//     static constexpr ck_tile::index_t M_Warp_Tile = 32;
+//     static constexpr ck_tile::index_t N_Warp_Tile = 32;
+//     static constexpr ck_tile::index_t K_Warp_Tile = get_k_warp_tile<PrecType, M_Warp_Tile>();
+
+//     static constexpr bool DoubleSmemBuffer               = false;
+//     static constexpr ck_tile::index_t Pipeline           = CK_TILE_PIPELINE_COMPUTE_V5;
+//     static constexpr ck_tile::index_t NumWaNumWaveGroups = 2;
+// };
 
 template <typename PrecType>
 struct GemmConfigPreshuffleDecode : public GemmConfigBase
@@ -178,7 +226,7 @@ struct GemmConfigPreshufflePrefill : public GemmConfigBase
     static constexpr ck_tile::index_t N_Warp_Tile = 16;
     static constexpr ck_tile::index_t K_Warp_Tile = get_k_warp_tile_flatmm<PrecType, M_Warp_Tile>();
 
-    static constexpr int kBlockPerCu           = 2;
+    static constexpr int kBlockPerCu           = 1;
     static constexpr auto Scheduler            = ck_tile::GemmPipelineScheduler::Default;
     static constexpr ck_tile::index_t Pipeline = CK_TILE_PIPELINE_PRESHUFFLE_V2;
     static constexpr bool Preshuffle           = true;
@@ -191,6 +239,9 @@ struct GemmConfigComputeV4_Wmma : public GemmConfigBase
 {
     // Compute V4 only support Intrawave scheduler
     // Using the ping pong reader in the lds level
+    static constexpr bool kPadM = true;
+    static constexpr bool kPadN = true;
+    static constexpr bool kPadK = true;
     static constexpr ck_tile::index_t M_Tile = 128;
     static constexpr ck_tile::index_t N_Tile = 128;
     static constexpr ck_tile::index_t K_Tile = 128 / sizeof(PrecType);
@@ -206,7 +257,7 @@ struct GemmConfigComputeV4_Wmma : public GemmConfigBase
     static constexpr bool DoubleSmemBuffer     = true;
     static constexpr ck_tile::index_t Pipeline = CK_TILE_PIPELINE_COMPUTE_V4;
 
-    static constexpr int kBlockPerCu = 2;
+    static constexpr int kBlockPerCu = 1;
 };
 
 template <typename PrecType>
